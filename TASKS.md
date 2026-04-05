@@ -72,14 +72,14 @@ Add e621.net as a content source alongside the existing Reddit integration, foll
 
 #### Implementation Plan
 
-- [ ] **1. Create `e621.js`** — Core module mirroring `reddit.js`
+- [x] **1. Create `e621.js`** — Core module mirroring `reddit.js`
   - `startE621()`: reads tags/sort/rating from the form, initialises slide buffer, fetches first page
   - `loadNextPage()`: fetches `/posts.json`, maps posts to slide objects (`{type, format, url, width, height}`), paginates via `b{id}` cursor; enforces 1 req/s delay between calls
   - `nextE621Slides()`: same contract as `nextRedditSlides(remainingWidth, height, isEmpty)` — returns slides fitting the row
   - `initE621()`: binds form element references
   - Filter: skip `swf`; treat `jpg/png/gif/webp` as `format: 'image'`, `mp4/webm` as `format: 'video'`
 
-- [ ] **2. Add E621 form to `index.html`**
+- [x] **2. Add E621 form to `index.html`**
   - "From E621" button alongside existing "Pick folder" and "From reddit" buttons
   - E621 form (hidden by default, shown on button click) containing:
     - Tags text input (space-separated)
@@ -96,14 +96,14 @@ Add e621.net as a content source alongside the existing Reddit integration, foll
   - Authenticated requests lift anonymous rate limits and apply the account's tag blacklist
   - Add a "Clear saved login" button that wipes credentials from `localStorage`
 
-- [ ] **4. Wire up `script.js`**
+- [x] **4. Wire up `script.js`**
   - Import `startE621`, `nextE621Slides`, `initE621` from `./e621.js`
   - Add `openE621()` function — mirrors `openReddit()`: calls `startE621()`, sets `slidesFetcher = nextE621Slides`, starts slideshow rows
   - Add `showE621Form()` — mirrors `showRedditForm()`
   - Bind "From E621" button and form submit in `window.onload`
   - Call `initE621()` in `window.onload`
 
-- [ ] **4. Handle video slides from E621**
+- [x] **4. Handle video slides from E621**
   - E621 video posts (`mp4`/`webm`) return a direct `file.url` — slide object uses `{format: 'video', url: ...}`, which `script.js` already handles via `vidDiv.src = slide.url`
   - Verify `scaledWidth` is set correctly from `file.width`/`file.height` before returning slides
 

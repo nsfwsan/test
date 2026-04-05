@@ -59,7 +59,7 @@
                 <img class="titleContent" src="resources/title.png"/>
                 <p class="titleContent noForm">Tiled slideshow for reddit or your local files.</p>
                 <p class="titleContent noForm">No files are uploaded. The slideshow is run on your computer.</p>
-                <button class="titleContent browse noForm" id="browse">Pick folder</button> <button class="titleContent browse noForm" id="browseReddit">From reddit</button>
+                <button class="titleContent browse noForm" id="browse">Pick folder</button> <button class="titleContent browse noForm" id="browseReddit">From reddit</button> <button class="titleContent browse noForm" id="browseE621">From E621</button>
                 <div id="redditForm" style="display: none;">
                     <div>
                         <label>Profile</label>
@@ -114,6 +114,45 @@
                     </div>
                     <div>
                         <button id="redditSubmit">Show Me Porn!</button>
+                    </div>
+                </div>
+                <div id="e621Form" style="display: none;">
+                    <div>
+                        <label for="e621Tags">Tags</label>
+                        <input type="text" id="e621Tags" placeholder="e.g. fox solo" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label for="e621Sort">Sort</label>
+                        <select id="e621Sort" autocomplete="off">
+                            <option value="score" selected>Top score</option>
+                            <option value="id">Newest</option>
+                            <option value="favcount">Most favorited</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Rating</label>
+                        <span>
+                            <input type="checkbox" id="e621RatingSafe" autocomplete="off" />
+                            <label for="e621RatingSafe">Safe</label>
+                            <input type="checkbox" id="e621RatingQuest" autocomplete="off" />
+                            <label for="e621RatingQuest">Questionable</label>
+                            <input type="checkbox" id="e621RatingExplicit" checked autocomplete="off" />
+                            <label for="e621RatingExplicit">Explicit</label>
+                        </span>
+                    </div>
+                    <div>
+                        <label for="e621Username">Username (optional)</label>
+                        <input type="text" id="e621Username" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label for="e621ApiKey">API key (optional)</label>
+                        <input type="password" id="e621ApiKey" autocomplete="off" />
+                    </div>
+                    <div>
+                        <span></span><button id="e621ClearLogin">Clear saved login</button>
+                    </div>
+                    <div>
+                        <button id="e621Submit">Show Me Porn!</button>
                     </div>
                 </div>
             </div>

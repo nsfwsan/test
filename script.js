@@ -1,6 +1,7 @@
 import { initSettings, settings } from './settings.js';
 import { showPicker, loadFiles, nextFileSlides, current, total, restartSlides } from './localFiles.js';
 import { startReddit, nextRedditSlides, initReddit } from './reddit.js';
+import { startE621, nextE621Slides, initE621 } from './e621.js';
 
 let inProgress = false;
 let animationInterval;
@@ -263,11 +264,35 @@ function showRedditForm() {
     document.getElementById("redditForm").style.display = null
 }
 
+function showE621Form() {
+    for (let elem of document.getElementsByClassName("noForm")) {
+        elem.style.display = 'none'
+    }
+    document.getElementById("e621Form").style.display = null
+}
+
+async function openE621() {
+    if (await startE621()) {
+        for (const e of document.getElementsByClassName("titleContent")) {
+            e.style.display = 'none'
+        }
+        document.getElementById("menu-tip").style.display = 'none'
+        inProgress = true
+        slidesFetcher = nextE621Slides
+        for (const e of document.getElementsByClassName("slideshow-row")) {
+            await startSlideShow(e)
+        }
+    }
+}
+
 window.onload = () => {
     document.getElementById("browse").onclick = openDir2
     slideshowGrid = document.getElementById("slideshow-grid")
     document.getElementById("browseReddit").onclick = showRedditForm
     document.getElementById("redditSubmit").onclick = openReddit
+    document.getElementById("browseE621").onclick = showE621Form
+    document.getElementById("e621Submit").onclick = openE621
     initSettings(changeGrid)
     initReddit()
+    initE621()
 }
