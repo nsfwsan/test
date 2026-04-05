@@ -12,8 +12,16 @@ let e621ApiKey = ""
 let e621TagsInput, e621SortSelect
 let e621RatingSafe, e621RatingQuest, e621RatingExplicit
 let e621UsernameInput, e621ApiKeyInput
+let e621ErrorElem
+
+function showError(msg) {
+    if (!e621ErrorElem) return
+    e621ErrorElem.textContent = msg
+    e621ErrorElem.style.display = msg ? 'block' : 'none'
+}
 
 export async function startE621() {
+    showError("")
     const userTags = e621TagsInput.value.trim()
     if (userTags === "") return false
 
@@ -72,6 +80,7 @@ async function loadNextPage() {
         if (!posts || posts.length === 0) {
             e621CursorId = null
             e621IsLoading = false
+            showError("No results found for these tags.")
             return
         }
 
@@ -88,6 +97,14 @@ async function loadNextPage() {
         }
     } catch (e) {
         console.error("e621 fetch error:", e)
+        // A TypeError with "Failed to fetch" typically means a CORS block or network error.
+        // e621.net may not send Access-Control-Allow-Origin headers for all origins —
+        // if this fires, the app cannot fetch directly from the browser.
+        if (e instanceof TypeError) {
+            showError("Could not connect to e621.net. This may be a CORS restriction — try opening the app via a local server rather than file://")
+        } else {
+            showError("e621 request failed: " + e.message)
+        }
     }
 
     e621IsLoading = false
@@ -137,6 +154,7 @@ export async function nextE621Slides(remainingWidth, height, isEmpty) {
 }
 
 export function initE621() {
+    e621ErrorElem = document.getElementById("e621Error")
     e621TagsInput = document.getElementById("e621Tags")
     e621SortSelect = document.getElementById("e621Sort")
     e621RatingSafe = document.getElementById("e621RatingSafe")

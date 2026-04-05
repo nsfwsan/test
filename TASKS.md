@@ -4,120 +4,110 @@ Tracked work items for Auto Goon.
 
 ## In Progress
 
-### Build E621.net Integration
+## Backlog
 
-Add e621.net as a content source alongside the existing Reddit integration, following the same `nextSlides()` contract used by `localFiles.js` and `reddit.js`.
+
+### E621 "My Favourites" Mode
+
+Add a "My Favourites" button to the E621 form that starts a slideshow of the logged-in user's saved posts, instead of a tag search.
+
+#### Background
+
+The e621 API exposes favourites via `GET /favorites.json?user_id={id}` (authenticated). This is distinct from the tag search endpoint (`/posts.json`) and requires a valid login. Other account features — followed tags, personal feed/home page — have no public API equivalent and cannot be accessed this way.
+
+#### Scope
+
+- The button should appear on the E621 form, replacing or supplementing the submit button when credentials are entered
+- Requires the user to be logged in (username + API key); if credentials are absent, show a message directing the user to fill them in
+- Fetches from `GET /favorites.json?user_id={id}` with the same `Authorization: Basic` header used in `loadNextPage()`
+- Pagination uses the same `page=b{id}` cursor pattern as the posts endpoint
+- Response shape is the same as `/posts.json` — `{ posts: [...] }` — so the existing slide-mapping logic in `loadNextPage()` can be reused
+
+#### Implementation Notes
+
+- Need to resolve the logged-in user's numeric `user_id` from their username — the endpoint `GET /users/{username}.json` returns the user object including `id`; fetch this once at start and cache it
+- Add `<button id="e621Favourites">My Favourites</button>` to the E621 form in `index.html`, alongside the existing submit button row
+- In `e621.js`, add `startE621Favourites()`: fetches the user ID, sets a module flag to switch `loadNextPage()` to use the favourites endpoint instead of the tags endpoint, then proceeds identically to `startE621()`
+- Wire `#e621Favourites` to `openE621Favourites()` in `script.js` (mirrors `openE621()` but calls `startE621Favourites()`)
+- If the user ID fetch fails (bad credentials, network error), surface a clear error via the existing `showError()` helper
+
+### Integrate RedGifs
+
+Add RedGifs as a content source, either standalone or as an enhancement to the existing Reddit integration (Reddit posts often embed RedGifs links).
+
+#### Feasibility
+
+RedGifs has a public REST API at `https://api.redgifs.com` with a Swagger spec at SwaggerHub. Key findings:
+
+- **Authentication**: A temporary Bearer token is required for all requests. It is obtained anonymously via `GET /v2/auth/temporary` — no account needed. The token must be attached as `Authorization: Bearer {token}` on subsequent requests.
+- **Search endpoint**: `GET /v2/gifs/search?search_text={tags}&order={order}&count={count}&page={page}` — returns paginated GIF/video results.
+- **Response fields**: Each item includes video URLs (HD, SD), dimensions, tags, and duration.
+- **No account required**: Unlike e621, basic search works without login.
+
+#### CORS Risk (Critical)
+
+CORS issues with `api.redgifs.com` have been actively reported by browser-based projects. The API appears to restrict `Access-Control-Allow-Origin` to specific origins, which may block direct `fetch()` calls from this app. This is the primary feasibility risk and must be tested before investing in full implementation.
+
+- If CORS is blocked from `file://` or GitHub Pages: a proxy would be required, which breaks the "no backend" architecture of this app.
+- Mitigation: test a bare `fetch("https://api.redgifs.com/v2/auth/temporary")` in the browser console on the hosted domain first.
+
+#### Two Integration Paths
+
+1. **Standalone source** — new "From RedGifs" button on the welcome screen, form with tag search, mirrors e621.js structure.
+2. **Reddit enhancement** — Reddit posts already embed RedGifs iframes; the existing `media_embed` path in `reddit.js` already handles these as iframes. A deeper integration could resolve the actual video URL from RedGifs and play it natively instead.
+
+Path 2 may deliver more value with less work, since Reddit + RedGifs content already partially works.
 
 #### API Summary
 
 | Detail | Value |
 |---|---|
-| Base URL | `https://e621.net` |
-| Posts endpoint | `GET /posts.json` |
-| Response format | JSON |
-| Rate limit | Hard cap: 2 req/s — best practice: 1 req/s (503 on breach) |
-| User-Agent | **Required.** Custom string only — e.g. `Auto Goon/1.0 (by username on e621)`. Impersonating a browser UA results in a block. |
-
-#### Request Parameters (`/posts.json`)
-
-| Parameter | Notes |
-|---|---|
-| `tags` | Space-separated tag query. Max **6 tags** per request. Supports metatags like `order:score`, `rating:s`, `type:video`. |
-| `limit` | Results per page. Max **320**. |
-| `page` | Page number for pagination. Also accepts `a{id}` (after ID) and `b{id}` (before ID) for cursor-based pagination. |
-
-#### Authentication
-
-- Read-only access (browsing posts) does **not** require authentication.
-- Authenticated requests use **HTTP Basic Auth**: username + API key (generated in e621 account settings).
-- Required only for write operations (voting, flagging, etc.) — not needed for this feature.
-- Explicit login unlocks access to user-specific content filters and higher-rated content.
-
-#### Post Response Fields (relevant subset)
-
-| Field | Description |
-|---|---|
-| `id` | Post ID — use for cursor pagination (`a{id}`) |
-| `file.url` | Direct URL to the full-resolution file |
-| `file.ext` | File extension: `jpg`, `png`, `gif`, `webp`, `mp4`, `webm` |
-| `file.width` / `file.height` | Dimensions in pixels |
-| `preview.url` | Thumbnail URL |
-| `sample.url` | Medium-resolution sample |
-| `rating` | `s` (safe), `q` (questionable), `e` (explicit) |
-| `tags` | Object of tag arrays by category (general, species, character, etc.) |
-| `md5` | File hash — useful for deduplication |
-
-#### Supported File Types (for this app)
-
-- Images: `jpg`, `png`, `gif`, `webp`
-- Video: `mp4`, `webm`
-- Skip: `swf` (Flash — deprecated)
-
-#### Implementation Notes
-
-- Mirror the structure of `reddit.js`: export `startE621()` and `nextE621Slides()`.
-- Use cursor-based pagination (`a{id}`) rather than page numbers to avoid duplicates across fetches.
-- Respect the 1 req/s sustained rate limit — add a delay between paginated fetches.
-- Set a descriptive `User-Agent` header on every request (required; plain `fetch()` in browsers sends no custom UA — may need a CORS proxy or the app to note this limitation).
-- Filter out `swf` posts before returning slides.
-- Tags input, sort order, and rating filter should be configurable (similar to Reddit's subreddit/sort/time fields).
+| Base URL | `https://api.redgifs.com` |
+| Auth endpoint | `GET /v2/auth/temporary` — returns `{ token }` |
+| Search endpoint | `GET /v2/gifs/search?search_text=&order=&count=&page=` |
+| Order options | `trending`, `top`, `latest`, `best` |
+| Response | `{ gifs: [{ id, urls: { hd, sd }, width, height, duration, tags }] }` |
+| Pagination | Page-number based (`page=1`, `page=2`, …) |
+| Rate limit | Not officially documented; 429s reported under heavy use |
+| CORS | **Unconfirmed for browser fetch — test before building** |
 
 #### References
 
-- [E621 OpenAPI Spec](https://e621.wiki/)
-- [ZestyAPI — JS wrapper](https://github.com/re621/ZestyAPI)
-- [DonovanDMC/E621 — TS wrapper](https://github.com/DonovanDMC/E621)
+- [RedGIFs REST API on SwaggerHub](https://app.swaggerhub.com/apis/RedGIFs/RedGIFs/1.0.0)
+- [redgifs Python wrapper docs](https://redgifs.readthedocs.io/en/stable/api.html)
+- [CORS issue report](https://github.com/extesy/hoverzoom/issues/1194)
 
-#### Implementation Plan
+### Reddit Upvoted Posts Feed (Investigate)
 
-- [x] **1. Create `e621.js`** — Core module mirroring `reddit.js`
-  - `startE621()`: reads tags/sort/rating from the form, initialises slide buffer, fetches first page
-  - `loadNextPage()`: fetches `/posts.json`, maps posts to slide objects (`{type, format, url, width, height}`), paginates via `b{id}` cursor; enforces 1 req/s delay between calls
-  - `nextE621Slides()`: same contract as `nextRedditSlides(remainingWidth, height, isEmpty)` — returns slides fitting the row
-  - `initE621()`: binds form element references
-  - Filter: skip `swf`; treat `jpg/png/gif/webp` as `format: 'image'`, `mp4/webm` as `format: 'video'`
+Display a slideshow sourced from the logged-in user's Reddit upvoted posts via `GET /user/{username}/upvoted.json`.
 
-- [x] **2. Add E621 form to `index.html`**
-  - "From E621" button alongside existing "Pick folder" and "From reddit" buttons
-  - E621 form (hidden by default, shown on button click) containing:
-    - Tags text input (space-separated)
-    - Sort dropdown: `score`, `id` (newest), `favcount`
-    - Rating checkbox group: Safe / Questionable / Explicit
-    - Username and API key fields (optional — for authenticated access)
-    - Submit button
+#### Feasibility
 
-- [ ] **3. Account login (optional authentication)**
-  - Username + API key fields in the E621 form (API key generated at e621.net account settings, never the account password)
-  - Store credentials in `localStorage` under a dedicated key so they persist across sessions
-  - `initE621()` reads stored credentials on load and pre-fills the fields
-  - When credentials are present, attach them as an `Authorization: Basic {base64(user:apikey)}` header on every `fetch()` call in `loadNextPage()`
-  - Authenticated requests lift anonymous rate limits and apply the account's tag blacklist
-  - Add a "Clear saved login" button that wipes credentials from `localStorage`
+The endpoint exists and works, but requires Reddit OAuth — a significant step up from the current anonymous JSON API approach used in `reddit.js`.
 
-- [x] **4. Wire up `script.js`**
-  - Import `startE621`, `nextE621Slides`, `initE621` from `./e621.js`
-  - Add `openE621()` function — mirrors `openReddit()`: calls `startE621()`, sets `slidesFetcher = nextE621Slides`, starts slideshow rows
-  - Add `showE621Form()` — mirrors `showRedditForm()`
-  - Bind "From E621" button and form submit in `window.onload`
-  - Call `initE621()` in `window.onload`
+**Auth flow (implicit grant — browser-only, no backend needed):**
+1. User is redirected to Reddit's authorization page (requires a registered Reddit app `client_id` from reddit.com/prefs/apps)
+2. Reddit redirects back to the app with an access token in the URL fragment
+3. Token is attached as `Authorization: Bearer {token}` on requests to `oauth.reddit.com`
 
-- [x] **4. Handle video slides from E621**
-  - E621 video posts (`mp4`/`webm`) return a direct `file.url` — slide object uses `{format: 'video', url: ...}`, which `script.js` already handles via `vidDiv.src = slide.url`
-  - Verify `scaledWidth` is set correctly from `file.width`/`file.height` before returning slides
+**Scope required:** `history` + `identity` (to resolve the username)
 
-- [x] **5. Match E621 form styling to Reddit form**
-  - Inspect `style.css` for any rules scoped to `#redditForm` or its children and apply equivalent rules to `#e621Form`
-  - Verify the "From E621" button matches the appearance of "From reddit" and "Pick folder" (already shares `class="titleContent browse noForm"` so should inherit automatically — confirm visually)
-  - Verify form layout (label/input rows, spacing, submit button) is consistent with the Reddit form
-  - Verify the "Clear saved login" button and rating checkboxes are styled consistently with existing form controls
+**Limitations:**
+- Requires the user to register a Reddit app themselves to obtain a `client_id` — adds setup friction
+- Implicit grant tokens expire after 1 hour with no refresh token; user must re-authenticate each session
+- The existing Reddit integration uses `old.reddit.com` with no auth — OAuth is a different code path entirely
 
-- [ ] **6. Verify CORS and connectivity**
-  - Confirm `e621.net/posts.json` responds with CORS headers permitting browser `fetch()` calls
-  - Confirm browser's default `User-Agent` is acceptable (the custom UA rule targets automated scripts, not browsers making direct requests)
-  - Document any CORS limitations in a code comment if issues arise
+#### Implementation Notes
 
-## Backlog
+- Add a "My Upvotes" button to the Reddit form, visible only when OAuth credentials are configured
+- On click: redirect to `https://www.reddit.com/api/v1/authorize?client_id=...&response_type=token&scope=identity history&redirect_uri=...`
+- On return: parse `#access_token=` from the URL fragment, store in `sessionStorage` (not `localStorage` — tokens expire)
+- Fetch `https://oauth.reddit.com/user/{username}/upvoted.json` with the Bearer token; response shape is identical to the existing Reddit JSON API so `reddit.js` parsing logic can be reused
+- The `redirect_uri` must exactly match what was registered in the Reddit app — this works for GitHub Pages but not `file://`
 
+#### Verdict
+
+Feasible but non-trivial. Best approached after the core Reddit and E621 integrations are stable.
 
 ### Add Back Button to Slideshow
 
@@ -166,6 +156,10 @@ Ensure the welcome screen and forms scale gracefully across all browser sizes an
 - Test at common viewport widths: 360px (phone), 768px (tablet), 1280px (desktop), 1920px (large desktop)
 
 ## Done
+
+### Build E621.net Integration
+
+Full integration delivered across `e621.js`, `index.html`, `script.js`, and `style.css`. Covers tag search, sort, rating filters, optional account login with localStorage persistence, cursor-based pagination, rate limiting, video slide support, form styling parity, and CORS error surfacing.
 
 ### Add Back Button to Menu Screens
 
