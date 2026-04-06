@@ -14,10 +14,10 @@
     z-index: 1;
     bottom: 125%; /* Position the tooltip above the text */
     left: 50%;
-    margin-left: -150px; /* Center the tooltip */
+    margin-left: clamp(-150px, -25vw, -100px); /* Center the tooltip */
     opacity: 0;
     transition: opacity 0.3s;
-    width: 300px;
+    width: clamp(200px, 50vw, 300px);
 }
 
 .tooltip::after {

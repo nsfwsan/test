@@ -70,21 +70,22 @@ body {
 
 #welcomeArea svg {
     width: 75px;
-    margin-top: 250px;
+    margin-top: clamp(60px, 12.18vw + 16px, 250px);
 }
+
 
 #ahegao-left {
     position: absolute;
     left: 0;
     bottom: 0;
-    width: 480px;
+    width: clamp(160px, 22.57vw + 46.7px, 480px);
 }
 
 #ahegao-right {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 400px;
+    width: clamp(140px, 19.1vw + 33.3px, 400px);
 }
 
 #load-container {
@@ -111,7 +112,7 @@ body {
 .browse {
     padding: 7px;
     font-family: inherit;
-    font-size: 25px;
+    font-size: clamp(16px, 0.87vw + 11.3px, 30px);
 }
 #menu-hover {
     position: absolute;
@@ -127,7 +128,7 @@ body {
 }
 
 #menu-tip {
-    font-size: 35px;
+    font-size: clamp(20px, 1.22vw + 14.7px, 40px);
 }
 
 #menu-tip > div:nth-child(1) {
@@ -165,7 +166,7 @@ a {
     color: lightgray;
 }
 #settingsDialog {
-    width: 500px;
+    width: min(500px, 90vw);
     margin: 0;
     position: absolute;
     top: 50%;
@@ -203,7 +204,7 @@ a {
 }
 
 #redditForm, #e621Form {
-    width: 300px;
+    width: clamp(240px, 10.42vw + 180px, 380px);
     margin: 0 auto;
 }
 
@@ -231,7 +232,7 @@ a {
 #redditSubmit, #e621Submit {
     padding: 7px;
     font-family: inherit;
-    font-size: 25px;
+    font-size: clamp(16px, 0.87vw + 11.3px, 30px);
     width: 100%;
 }
 
@@ -239,13 +240,13 @@ a {
 
 @media (orientation: portrait) and (max-width: 1000px) {
     .browse, #redditSubmit, #e621Submit {
-        font-size: 80px;
+        font-size: 32px;
     }
     #settingsDialog {
         width: 90%;
     }
     input, button, body, select {
-        font-size: 40px;
+        font-size: 18px;
     }
     
     .settingsRow.sub span:first-of-type {
@@ -287,23 +288,16 @@ a {
     }
     
     #menu-tip {
-        font-size: 55px;
+        font-size: 28px;
     }
 
     #menu-tip img {
-        width: 160px;
-    }
-  
-}
-
-@media (orientation: landscape) and (max-height: 600px) {
-
-    #ahegao-left {
-        width: 240px;
+        width: 100px;
     }
 
-    #ahegao-right {
-        width: 200px;
+    #ahegao-left, #ahegao-right {
+        display: none;
     }
 
 }
+

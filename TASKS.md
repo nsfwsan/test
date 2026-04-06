@@ -138,24 +138,11 @@ Add a back button to the slideshow view that returns the user to the welcome scr
 
 The timer cleanup is the hardest part — `timeout` variables are currently scoped inside `startSlideShow` closures with no external reference. This will likely require a module-level `Set` or array to register active timeouts so `stopSlideShow()` can cancel them all.
 
+## Done
+
 ### Auto Resize UI Depending on Browser Size
 
-Ensure the welcome screen and forms scale gracefully across all browser sizes and orientations, beyond the existing portrait phone breakpoint.
-
-#### Scope
-
-- Welcome screen buttons and form controls currently use fixed `px` font sizes and widths that may feel too small on large displays or break on narrow desktop windows
-- The existing portrait media query (`orientation: portrait` and `max-width: 1000px`) handles phones but not intermediate sizes (small desktop windows, tablets in landscape, etc.)
-- The E621 and Reddit forms have a fixed `width: 300px` which may be too narrow or too wide depending on viewport
-
-#### Implementation Notes
-
-- Audit all fixed `px` sizes in `style.css` for the welcome screen and form elements; convert to `vw`/`vh`/`rem`/`%` where appropriate
-- Consider replacing the single portrait breakpoint with a fluid approach (e.g. `clamp()` for font sizes) so the UI scales continuously rather than snapping
-- The slideshow grid itself already scales correctly — focus on the welcome/form layer only
-- Test at common viewport widths: 360px (phone), 768px (tablet), 1280px (desktop), 1920px (large desktop)
-
-## Done
+10 `clamp()` / `min()` values applied across `style.css` and `tooltip.css`. Buttons, forms, decorative images, settings dialog, and tooltip all scale continuously from 360px to 1920px. Zero new media queries — existing portrait/landscape overrides preserved unchanged.
 
 ### Build E621.net Integration
 
