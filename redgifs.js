@@ -63,7 +63,7 @@ async function loadNextPage() {
     if (elapsed < 1000) await new Promise(r => setTimeout(r, 1000 - elapsed))
 
     const url = BASE_URL + "/v2/gifs/search"
-        + "?search_text=" + encodeURIComponent(rgSearchText)
+        + "?tags=" + encodeURIComponent(rgSearchText)
         + "&order=" + rgOrder
         + "&count=40"
         + "&page=" + rgPage
@@ -95,9 +95,13 @@ async function loadNextPage() {
         rgPage++
 
         for (const gif of gifs) {
-            const url = gif.urls?.hd || gif.urls?.sd
-            if (!url || !gif.width || !gif.height) continue
-            rgSlides.push({ type: "short", format: "video", url, width: gif.width, height: gif.height })
+            if (!gif.id || !gif.width || !gif.height) continue
+            rgSlides.push({
+                type: "iframe",
+                html: `<iframe src="https://www.redgifs.com/ifr/${gif.id}" frameborder="0" scrolling="no" allowfullscreen allow="autoplay;fullscreen"></iframe>`,
+                width: gif.width,
+                height: gif.height
+            })
         }
     } catch (e) {
         console.error("RedGifs fetch error:", e)

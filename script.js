@@ -156,7 +156,10 @@ async function startSlideShow(root) {
                     vidDiv.play()
                 } else if (slide.url) {
                     vidDiv.src = slide.url
-                    vidDiv.play()
+                    vidDiv.play().catch(() => {
+                        vidDiv.muted = true
+                        vidDiv.play().catch(() => {})
+                    })
                 } else if (slide.hls) {
                     var hls = new Hls();
                     hlsSources[slide.hls] = hls

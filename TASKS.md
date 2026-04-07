@@ -2,91 +2,6 @@
 
 Tracked work items for Auto Goon.
 
-## In Progress
-
-### `RG` — Integrate RedGifs
-
-Add RedGifs as a content source, either standalone or as an enhancement to the existing Reddit integration (Reddit posts often embed RedGifs links).
-
-#### Feasibility
-
-RedGifs has a public REST API at `https://api.redgifs.com` with a Swagger spec at SwaggerHub. Key findings:
-
-- **Authentication**: A temporary Bearer token is required for all requests. It is obtained anonymously via `GET /v2/auth/temporary` — no account needed. The token must be attached as `Authorization: Bearer {token}` on subsequent requests.
-- **Search endpoint**: `GET /v2/gifs/search?search_text={tags}&order={order}&count={count}&page={page}` — returns paginated GIF/video results.
-- **Response fields**: Each item includes video URLs (HD, SD), dimensions, tags, and duration.
-- **No account required**: Unlike e621, basic search works without login.
-
-#### CORS Risk (Critical)
-
-CORS issues with `api.redgifs.com` have been actively reported by browser-based projects. The API appears to restrict `Access-Control-Allow-Origin` to specific origins, which may block direct `fetch()` calls from this app. This is the primary feasibility risk and must be tested before investing in full implementation.
-
-- If CORS is blocked from `file://` or GitHub Pages: a proxy would be required, which breaks the "no backend" architecture of this app.
-- Mitigation: test a bare `fetch("https://api.redgifs.com/v2/auth/temporary")` in the browser console on the hosted domain first.
-
-#### Two Integration Paths
-
-1. **Standalone source** — new "From RedGifs" button on the welcome screen, form with tag search, mirrors e621.js structure.
-2. **Reddit enhancement** — Reddit posts already embed RedGifs iframes; the existing `media_embed` path in `reddit.js` already handles these as iframes. A deeper integration could resolve the actual video URL from RedGifs and play it natively instead.
-
-Path 2 may deliver more value with less work, since Reddit + RedGifs content already partially works.
-
-#### API Summary
-
-| Detail | Value |
-|---|---|
-| Base URL | `https://api.redgifs.com` |
-| Auth endpoint | `GET /v2/auth/temporary` — returns `{ token }` |
-| Search endpoint | `GET /v2/gifs/search?search_text=&order=&count=&page=` |
-| Order options | `trending`, `top`, `latest`, `best` |
-| Response | `{ gifs: [{ id, urls: { hd, sd }, width, height, duration, tags }] }` |
-| Pagination | Page-number based (`page=1`, `page=2`, …) |
-| Rate limit | Not officially documented; 429s reported under heavy use |
-| CORS | **Unconfirmed for browser fetch — test before building** |
-
-#### References
-
-- [RedGIFs REST API on SwaggerHub](https://app.swaggerhub.com/apis/RedGIFs/RedGIFs/1.0.0)
-- [redgifs Python wrapper docs](https://redgifs.readthedocs.io/en/stable/api.html)
-- [CORS issue report](https://github.com/extesy/hoverzoom/issues/1194)
-
-#### Implementation Plan
-
-- [x] **`RG-1`** Create `redgifs.js` — Core module mirroring `e621.js`
-  - `fetchToken()`: `GET /v2/auth/temporary`, stores Bearer token; re-called on 401
-  - `startRedgifs()`: reads tags/order from form, resets state, fetches token then first page
-  - `loadNextPage()`: `GET /v2/gifs/search` with Bearer header, page-number pagination, maps gifs to `{ type: 'short', format: 'video', url: gif.urls.hd || gif.urls.sd, width, height }` slide objects
-  - `nextRedgifsSlides(remainingWidth, height, isEmpty)`: same contract as `nextE621Slides`
-  - `initRedgifs()`: binds form element refs and error element
-  - `showError()`: same pattern as e621.js
-  - On CORS/TypeError: surface actionable error message
-
-- [x] **`RG-2`** Add RedGifs form to `index.html`
-  - "From RedGifs" button alongside existing source buttons (`class="titleContent browse noForm"`)
-  - `#redgifsForm` (hidden by default) containing:
-    - `← Back` button (`#redgifsBack`)
-    - Tags input (`#rgTags`)
-    - Order select (`#rgOrder`): Trending, Top, Latest, Best
-    - Submit button (`#redgifsSubmit`)
-    - Error paragraph (`#redgifsError`)
-
-- [x] **`RG-3`** Wire up `script.js`
-  - Import `startRedgifs`, `nextRedgifsSlides`, `initRedgifs` from `./redgifs.js`
-  - Add `showRedgifsForm()` and `openRedgifs()` functions
-  - Bind `#browseRedgifs`, `#redgifsSubmit`, `#redgifsBack` in `window.onload`
-  - Call `initRedgifs()` in `window.onload`
-
-- [x] **`RG-4`** Extend CSS selectors in `style.css`
-  - Add `#redgifsForm` to form width/margin rule
-  - Add `#redgifsForm>div` to form row flex rule
-  - Add `#redgifsSubmit` to submit button rule
-  - Add `#redgifsSubmit` to portrait media query button rule
-  - Add `#redgifsForm` to portrait media query width rule
-
-- [x] **`RG-5`** Add a back button to the slideshow view — mirrors the "Add Back Button to Slideshow" backlog task; implement for RedGifs (and ideally all sources) so the user can return to the welcome screen without refreshing
-
-- [ ] **`RG-6`** Fix: Videos do not load — investigate why video slides from RedGifs fail to play; likely causes: browser autoplay policy requiring `muted` attribute, CORS on the video CDN URLs, or missing `crossOrigin` attribute on the `<video>` element
-
 ## Backlog
 
 ### `E6-FAV` — E621 "My Favourites" Mode
@@ -146,6 +61,10 @@ The endpoint exists and works, but requires Reddit OAuth — a significant step 
 Feasible but non-trivial. Best approached after the core Reddit and E621 integrations are stable.
 
 ## Done
+
+### `RG` — Integrate RedGifs
+
+Full integration delivered across `redgifs.js`, `index.html`, `script.js`, and `style.css`. Anonymous Bearer token auth via `GET /v2/auth/temporary`; tag search using `?tags=` parameter with order and page-number pagination. Videos are served as `<iframe src="https://www.redgifs.com/ifr/{id}">` to work around `media.redgifs.com` CORS restrictions on the video CDN. Back button and loading animation shared with all other sources.
 
 ### `LOAD-ANIM` — Port Loading Animation to All Sources
 
