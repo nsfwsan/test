@@ -4,34 +4,7 @@ Tracked work items for Auto Goon.
 
 ## In Progress
 
-## Backlog
-
-
-### E621 "My Favourites" Mode
-
-Add a "My Favourites" button to the E621 form that starts a slideshow of the logged-in user's saved posts, instead of a tag search.
-
-#### Background
-
-The e621 API exposes favourites via `GET /favorites.json?user_id={id}` (authenticated). This is distinct from the tag search endpoint (`/posts.json`) and requires a valid login. Other account features — followed tags, personal feed/home page — have no public API equivalent and cannot be accessed this way.
-
-#### Scope
-
-- The button should appear on the E621 form, replacing or supplementing the submit button when credentials are entered
-- Requires the user to be logged in (username + API key); if credentials are absent, show a message directing the user to fill them in
-- Fetches from `GET /favorites.json?user_id={id}` with the same `Authorization: Basic` header used in `loadNextPage()`
-- Pagination uses the same `page=b{id}` cursor pattern as the posts endpoint
-- Response shape is the same as `/posts.json` — `{ posts: [...] }` — so the existing slide-mapping logic in `loadNextPage()` can be reused
-
-#### Implementation Notes
-
-- Need to resolve the logged-in user's numeric `user_id` from their username — the endpoint `GET /users/{username}.json` returns the user object including `id`; fetch this once at start and cache it
-- Add `<button id="e621Favourites">My Favourites</button>` to the E621 form in `index.html`, alongside the existing submit button row
-- In `e621.js`, add `startE621Favourites()`: fetches the user ID, sets a module flag to switch `loadNextPage()` to use the favourites endpoint instead of the tags endpoint, then proceeds identically to `startE621()`
-- Wire `#e621Favourites` to `openE621Favourites()` in `script.js` (mirrors `openE621()` but calls `startE621Favourites()`)
-- If the user ID fetch fails (bad credentials, network error), surface a clear error via the existing `showError()` helper
-
-### Integrate RedGifs
+### `RG` — Integrate RedGifs
 
 Add RedGifs as a content source, either standalone or as an enhancement to the existing Reddit integration (Reddit posts often embed RedGifs links).
 
@@ -77,7 +50,70 @@ Path 2 may deliver more value with less work, since Reddit + RedGifs content alr
 - [redgifs Python wrapper docs](https://redgifs.readthedocs.io/en/stable/api.html)
 - [CORS issue report](https://github.com/extesy/hoverzoom/issues/1194)
 
-### Reddit Upvoted Posts Feed (Investigate)
+#### Implementation Plan
+
+- [x] **`RG-1`** Create `redgifs.js` — Core module mirroring `e621.js`
+  - `fetchToken()`: `GET /v2/auth/temporary`, stores Bearer token; re-called on 401
+  - `startRedgifs()`: reads tags/order from form, resets state, fetches token then first page
+  - `loadNextPage()`: `GET /v2/gifs/search` with Bearer header, page-number pagination, maps gifs to `{ type: 'short', format: 'video', url: gif.urls.hd || gif.urls.sd, width, height }` slide objects
+  - `nextRedgifsSlides(remainingWidth, height, isEmpty)`: same contract as `nextE621Slides`
+  - `initRedgifs()`: binds form element refs and error element
+  - `showError()`: same pattern as e621.js
+  - On CORS/TypeError: surface actionable error message
+
+- [x] **`RG-2`** Add RedGifs form to `index.html`
+  - "From RedGifs" button alongside existing source buttons (`class="titleContent browse noForm"`)
+  - `#redgifsForm` (hidden by default) containing:
+    - `← Back` button (`#redgifsBack`)
+    - Tags input (`#rgTags`)
+    - Order select (`#rgOrder`): Trending, Top, Latest, Best
+    - Submit button (`#redgifsSubmit`)
+    - Error paragraph (`#redgifsError`)
+
+- [x] **`RG-3`** Wire up `script.js`
+  - Import `startRedgifs`, `nextRedgifsSlides`, `initRedgifs` from `./redgifs.js`
+  - Add `showRedgifsForm()` and `openRedgifs()` functions
+  - Bind `#browseRedgifs`, `#redgifsSubmit`, `#redgifsBack` in `window.onload`
+  - Call `initRedgifs()` in `window.onload`
+
+- [x] **`RG-4`** Extend CSS selectors in `style.css`
+  - Add `#redgifsForm` to form width/margin rule
+  - Add `#redgifsForm>div` to form row flex rule
+  - Add `#redgifsSubmit` to submit button rule
+  - Add `#redgifsSubmit` to portrait media query button rule
+  - Add `#redgifsForm` to portrait media query width rule
+
+- [x] **`RG-5`** Add a back button to the slideshow view — mirrors the "Add Back Button to Slideshow" backlog task; implement for RedGifs (and ideally all sources) so the user can return to the welcome screen without refreshing
+
+- [ ] **`RG-6`** Fix: Videos do not load — investigate why video slides from RedGifs fail to play; likely causes: browser autoplay policy requiring `muted` attribute, CORS on the video CDN URLs, or missing `crossOrigin` attribute on the `<video>` element
+
+## Backlog
+
+### `E6-FAV` — E621 "My Favourites" Mode
+
+Add a "My Favourites" button to the E621 form that starts a slideshow of the logged-in user's saved posts, instead of a tag search.
+
+#### Background
+
+The e621 API exposes favourites via `GET /favorites.json?user_id={id}` (authenticated). This is distinct from the tag search endpoint (`/posts.json`) and requires a valid login. Other account features — followed tags, personal feed/home page — have no public API equivalent and cannot be accessed this way.
+
+#### Scope
+
+- The button should appear on the E621 form, replacing or supplementing the submit button when credentials are entered
+- Requires the user to be logged in (username + API key); if credentials are absent, show a message directing the user to fill them in
+- Fetches from `GET /favorites.json?user_id={id}` with the same `Authorization: Basic` header used in `loadNextPage()`
+- Pagination uses the same `page=b{id}` cursor pattern as the posts endpoint
+- Response shape is the same as `/posts.json` — `{ posts: [...] }` — so the existing slide-mapping logic in `loadNextPage()` can be reused
+
+#### Implementation Notes
+
+- Need to resolve the logged-in user's numeric `user_id` from their username — the endpoint `GET /users/{username}.json` returns the user object including `id`; fetch this once at start and cache it
+- Add `<button id="e621Favourites">My Favourites</button>` to the E621 form in `index.html`, alongside the existing submit button row
+- In `e621.js`, add `startE621Favourites()`: fetches the user ID, sets a module flag to switch `loadNextPage()` to use the favourites endpoint instead of the tags endpoint, then proceeds identically to `startE621()`
+- Wire `#e621Favourites` to `openE621Favourites()` in `script.js` (mirrors `openE621()` but calls `startE621Favourites()`)
+- If the user ID fetch fails (bad credentials, network error), surface a clear error via the existing `showError()` helper
+
+### `RD-UP` — Reddit Upvoted Posts Feed (Investigate)
 
 Display a slideshow sourced from the logged-in user's Reddit upvoted posts via `GET /user/{username}/upvoted.json`.
 
@@ -109,45 +145,24 @@ The endpoint exists and works, but requires Reddit OAuth — a significant step 
 
 Feasible but non-trivial. Best approached after the core Reddit and E621 integrations are stable.
 
-### Add Back Button to Slideshow
-
-Add a back button to the slideshow view that returns the user to the welcome screen. The button lives in the top-left corner, hidden by default, and fades in on hover.
-
-#### Scope
-
-- The slideshow is shown by hiding `#welcome` and displaying `#slideshow-grid`
-- A back button needs to sit above the grid (`z-index` above slides), visible only on hover
-- Returning to the welcome screen must cleanly stop the current slideshow — slides, timers, and HLS sources all need disposing
-
-#### Implementation Notes
-
-- Add a `<button id="slideshowBack">← Back</button>` to `index.html`, positioned `fixed` top-left, above the slideshow grid (`z-index: 4`)
-- Style in `style.css`: `opacity: 0` by default, `opacity: 1` on `#slideshowBack:hover`; use `transition: opacity 0.2s` for a smooth fade; give it enough padding to be an easy hover target
-- In `script.js`, add a `stopSlideShow()` function that:
-  - Clears all active slide timers (currently managed as local `timeout` vars inside `startSlideShow` closures — may need a module-level registry to track them)
-  - Destroys all HLS instances in `hlsSources` and clears the object
-  - Revokes all Blob URLs on current slide elements (`disposeResources` already does this per-element — call it on each slide)
-  - Empties all `.slideshow-row` elements
-  - Resets `inProgress = false` and `slidesFetcher = null`
-  - Hides `#slideshow-grid`, shows `#welcome`, restores `#menu-tip`
-  - Restores `.titleContent` and `.noForm` elements
-- Bind `#slideshowBack` to `stopSlideShow()` in `window.onload`
-- Hide `#slideshowBack` when on the welcome screen; show it when the slideshow starts (mirror how `#menu-tip` is hidden in `openReddit`/`openE621`/`openDir2`)
-
-#### Complexity Note
-
-The timer cleanup is the hardest part — `timeout` variables are currently scoped inside `startSlideShow` closures with no external reference. This will likely require a module-level `Set` or array to register active timeouts so `stopSlideShow()` can cancel them all.
-
 ## Done
 
-### Auto Resize UI Depending on Browser Size
+### `LOAD-ANIM` — Port Loading Animation to All Sources
+
+Bucket animation now plays during the API call for Reddit, E621, and RedGifs sources. `animateBucket()` gained an optional `fillFraction` parameter (network sources pass `0.5`; local folder load unchanged). Animation is started before `start*()` is awaited so it's visible during the network request, and cleared on both success and failure.
+
+### `SL-BACK` — Add Back Button to Slideshow
+
+Fixed-position `← Back` button in the top-left corner of the slideshow view. Invisible by default, fades in on hover (`opacity` transition). Clicking it calls `stopSlideShow()` which cancels all active timers via a module-level `activeTimers` Set, destroys HLS instances, disposes blob URLs, clears the bucket animation interval, hides the load container, and restores the welcome screen.
+
+### `UI-RESIZE` — Auto Resize UI Depending on Browser Size
 
 10 `clamp()` / `min()` values applied across `style.css` and `tooltip.css`. Buttons, forms, decorative images, settings dialog, and tooltip all scale continuously from 360px to 1920px. Zero new media queries — existing portrait/landscape overrides preserved unchanged.
 
-### Build E621.net Integration
+### `E6` — Build E621.net Integration
 
 Full integration delivered across `e621.js`, `index.html`, `script.js`, and `style.css`. Covers tag search, sort, rating filters, optional account login with localStorage persistence, cursor-based pagination, rate limiting, video slide support, form styling parity, and CORS error surfacing.
 
-### Add Back Button to Menu Screens
+### `MENU-BACK` — Add Back Button to Menu Screens
 
 `← Back` button added to the top of `#redditForm` and `#e621Form`. `showWelcome()` in `script.js` reverses the form-show logic. Field values are preserved automatically.
